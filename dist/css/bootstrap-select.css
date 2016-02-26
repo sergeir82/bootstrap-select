@@ -279,4 +279,7 @@ select.selectpicker {
   width: 100%;
   float: none;
 }
+.open .dropdown-menu {
+  display: block;
+}
 /*# sourceMappingURL=bootstrap-select.css.map */

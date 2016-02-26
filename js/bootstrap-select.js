@@ -1,5 +1,43 @@
-(function ($) {
+(function ($, Clusterize) {
   'use strict';
+
+  var ListItem = function(options) {
+    this.options = options ||  {};
+  };
+
+  ListItem.prototype.toString = function() {
+    var options = this.options;
+    var content = options.link ?
+      this.generateA(options.link.text, options.link.classes, options.link.inline, options.link.tokens) : options.content;
+
+    var addClasses  = [options.classes];
+
+    this.disabled && addClasses.push('disabled');
+    this.selected && addClasses.push('selected');
+
+    return this.generateLI(content, options.index, addClasses.join(' '), options.optgroup);
+  };
+
+  ListItem.prototype.generateLI = function (content, index, classes, optgroup) {
+    return '<li' +
+      ((typeof classes !== 'undefined' && '' !== classes) ? ' class="' + classes + '"' : '') +
+      ((typeof index !== 'undefined' && null !== index) ? ' data-original-index="' + index + '"' : '') +
+      ((typeof optgroup !== 'undefined' && null !== optgroup) ? 'data-optgroup="' + optgroup + '"' : '') +
+      '>' + content + '</li>';
+  };
+
+  ListItem.prototype.generateA = function (text, classes, inline, tokens) {
+    return '<a tabindex="0"' +
+      (typeof classes !== 'undefined' ? ' class="' + classes + '"' : '') +
+      (typeof inline !== 'undefined' ? ' style="' + inline + '"' : '') +
+      (this.options.pluginOpt.liveSearchNormalize ? ' data-normalized-text="' + normalizeToBase(htmlEscape(text)) + '"' : '') +
+      (typeof tokens !== 'undefined' || tokens !== null ? ' data-tokens="' + tokens + '"' : '') +
+      '>' + text +
+      '<span class="' + this.options.pluginOpt.iconBase + ' ' + this.options.pluginOpt.tickIcon + ' check-mark"></span>' +
+      '</a>';
+  };
+
+
 
   //<editor-fold desc="Shims">
   if (!String.prototype.includes) {
@@ -311,7 +349,8 @@
     maxOptions: false,
     mobile: false,
     selectOnTab: false,
-    dropdownAlignRight: false
+    dropdownAlignRight: false,
+    clusterize: true
   };
 
   Selectpicker.prototype = {
@@ -335,8 +374,11 @@
         .appendTo(this.$newElement);
       this.$button = this.$newElement.children('button');
       this.$menu = this.$newElement.children('.dropdown-menu');
-      this.$menuInner = this.$menu.children('.inner');
+      this.$menuInner = this.$menu.find('.inner');
       this.$searchbox = this.$menu.find('input');
+
+      this.$clusterizeScroll = this.$menu.find('.clusterize-scroll');
+      this.$clusterizeContent = this.$menu.find('.clusterize-content');
 
       this.$element.removeClass('bs-select-hidden');
 
@@ -455,8 +497,8 @@
           header +
           searchbox +
           actionsbox +
-          '<ul class="dropdown-menu inner" role="menu">' +
-          '</ul>' +
+          '<div class="dropdown-menu-wrap dropdown-menu inner clusterize-scroll"><ul class="clusterize-content dropdown-menu inner" role="menu">' +
+          '</ul></div>' +
           donebutton +
           '</div>' +
           '</div>';
@@ -465,19 +507,19 @@
     },
 
     createView: function () {
-      var $drop = this.createDropdown(),
-          li = this.createLi();
+      var $drop = this.createDropdown();
+      this.cacheLi = this.createLi();
 
-      $drop.find('ul')[0].innerHTML = li;
+
       return $drop;
     },
 
     reloadLi: function () {
-      //Remove all children.
-      this.destroyLi();
-      //Re build
-      var li = this.createLi();
-      this.$menuInner[0].innerHTML = li;
+      ////Remove all children.
+      //this.destroyLi();
+      ////Re build
+      //var li = this.createLi();
+      //this.$menuInner[0].innerHTML = li;
     },
 
     destroyLi: function () {
@@ -491,39 +533,39 @@
           titleOption = document.createElement('option'),
           liIndex = -1; // increment liIndex whenever a new <li> element is created to ensure liObj is correct
 
-      // Helper functions
-      /**
-       * @param content
-       * @param [index]
-       * @param [classes]
-       * @param [optgroup]
-       * @returns {string}
-       */
-      var generateLI = function (content, index, classes, optgroup) {
-        return '<li' +
-            ((typeof classes !== 'undefined' & '' !== classes) ? ' class="' + classes + '"' : '') +
-            ((typeof index !== 'undefined' & null !== index) ? ' data-original-index="' + index + '"' : '') +
-            ((typeof optgroup !== 'undefined' & null !== optgroup) ? 'data-optgroup="' + optgroup + '"' : '') +
-            '>' + content + '</li>';
-      };
-
-      /**
-       * @param text
-       * @param [classes]
-       * @param [inline]
-       * @param [tokens]
-       * @returns {string}
-       */
-      var generateA = function (text, classes, inline, tokens) {
-        return '<a tabindex="0"' +
-            (typeof classes !== 'undefined' ? ' class="' + classes + '"' : '') +
-            (typeof inline !== 'undefined' ? ' style="' + inline + '"' : '') +
-            (that.options.liveSearchNormalize ? ' data-normalized-text="' + normalizeToBase(htmlEscape(text)) + '"' : '') +
-            (typeof tokens !== 'undefined' || tokens !== null ? ' data-tokens="' + tokens + '"' : '') +
-            '>' + text +
-            '<span class="' + that.options.iconBase + ' ' + that.options.tickIcon + ' check-mark"></span>' +
-            '</a>';
-      };
+      //// Helper functions
+      ///**
+      // * @param content
+      // * @param [index]
+      // * @param [classes]
+      // * @param [optgroup]
+      // * @returns {string}
+      // */
+      //var generateLI = function (content, index, classes, optgroup) {
+      //  return '<li' +
+      //      ((typeof classes !== 'undefined' & '' !== classes) ? ' class="' + classes + '"' : '') +
+      //      ((typeof index !== 'undefined' & null !== index) ? ' data-original-index="' + index + '"' : '') +
+      //      ((typeof optgroup !== 'undefined' & null !== optgroup) ? 'data-optgroup="' + optgroup + '"' : '') +
+      //      '>' + content + '</li>';
+      //};
+      //
+      ///**
+      // * @param text
+      // * @param [classes]
+      // * @param [inline]
+      // * @param [tokens]
+      // * @returns {string}
+      // */
+      //var generateA = function (text, classes, inline, tokens) {
+      //  return '<a tabindex="0"' +
+      //      (typeof classes !== 'undefined' ? ' class="' + classes + '"' : '') +
+      //      (typeof inline !== 'undefined' ? ' style="' + inline + '"' : '') +
+      //      (that.options.liveSearchNormalize ? ' data-normalized-text="' + normalizeToBase(htmlEscape(text)) + '"' : '') +
+      //      (typeof tokens !== 'undefined' || tokens !== null ? ' data-tokens="' + tokens + '"' : '') +
+      //      '>' + text +
+      //      '<span class="' + that.options.iconBase + ' ' + that.options.tickIcon + ' check-mark"></span>' +
+      //      '</a>';
+      //};
 
       if (this.options.title && !this.multiple) {
         // this option doesn't create a new <li> element, but does add a new option, so liIndex is decreased
@@ -588,10 +630,10 @@
 
             if (index !== 0 && _li.length > 0) { // Is it NOT the first option of the select && are there elements in the dropdown?
               liIndex++;
-              _li.push(generateLI('', null, 'divider', optID + 'div'));
+              _li.push(new ListItem({ content: '', index: null, classes: 'divider', optgroup: optID + 'div', pluginOpt: that.options}));
             }
             liIndex++;
-            _li.push(generateLI(label, null, 'dropdown-header' + optGroupClass, optID));
+            _li.push(new ListItem({ content: label, index: null, classes: 'dropdown-header' + optGroupClass, optgroup: optID, pluginOpt: that.options }));
           }
 
           if (that.options.hideDisabled && isDisabled) {
@@ -599,17 +641,29 @@
             return;
           }
 
-          _li.push(generateLI(generateA(text, 'opt ' + optionClass + optGroupClass, inline, tokens), index, '', optID));
+          _li.push(new ListItem({
+            link: { text: text, classes: 'opt ' + optionClass + optGroupClass, inline: inline, tokens: tokens },
+            index: index,
+            classes: '',
+            optgroup: optID,
+            pluginOpt: that.options
+          }));
         } else if ($this.data('divider') === true) {
-          _li.push(generateLI('', index, 'divider'));
+          _li.push(new ListItem({ content: '', index: index, classes: 'divider', pluginOpt: that.options }));
         } else if ($this.data('hidden') === true) {
-          _li.push(generateLI(generateA(text, optionClass, inline, tokens), index, 'hidden is-hidden'));
+          _li.push(new ListItem({
+            link: { text: text, classes: optionClass, inline: inline, tokens: tokens } ,
+            index: index,
+            classes: 'hidden is-hidden',
+            pluginOpt: that.options
+          }));
         } else {
           if (this.previousElementSibling && this.previousElementSibling.tagName === 'OPTGROUP') {
             liIndex++;
-            _li.push(generateLI('', null, 'divider', optID + 'div'));
+            _li.push(new ListItem({ content: '', index: null, classes: 'divider', optgroup:  optID + 'div', pluginOpt: that.options }));
           }
-          _li.push(generateLI(generateA(text, optionClass, inline, tokens), index));
+          _li.push(new ListItem({
+            link: { text: text, classes: optionClass, inline: inline, tokens: tokens }, index: index, pluginOpt: that.options }));
         }
 
         that.liObj[index] = liIndex;
@@ -620,7 +674,7 @@
         this.$element.find('option').eq(0).prop('selected', true).attr('selected', 'selected');
       }
 
-      return _li.join('');
+      return _li;
     },
 
     findLis: function () {
@@ -875,7 +929,7 @@
             'overflow': 'hidden',
             'min-height': minHeight + headerHeight + searchHeight + actionsHeight + doneButtonHeight + 'px'
           });
-          $menuInner.css({
+          that.$clusterizeScroll.css({
             'max-height': menuHeight - headerHeight - searchHeight - actionsHeight - doneButtonHeight - menuPadding + 'px',
             'overflow-y': 'auto',
             'min-height': Math.max(minHeight - menuPadding, 0) + 'px'
@@ -911,6 +965,8 @@
           'min-height': ''
         });
       }
+
+      this.clusterize && this.clusterize.refresh();
     },
 
     setWidth: function () {
@@ -990,23 +1046,30 @@
     },
 
     setSelected: function (index, selected, $lis) {
-      if (!$lis) {
-        $lis = this.findLis().eq(this.liObj[index]);
-      }
+      //if (!$lis) {
+      //  $lis = this.findLis().eq(this.liObj[index]);
+      //}
 
-      $lis.toggleClass('selected', selected);
+      if (this.liObj[index]) {
+        this.cacheLi[this.liObj[index]].selected = selected;
+      }
+      //$lis.toggleClass('selected', selected);
     },
 
     setDisabled: function (index, disabled, $lis) {
-      if (!$lis) {
-        $lis = this.findLis().eq(this.liObj[index]);
+      //if (!$lis) {
+      //  $lis = this.findLis().eq(this.liObj[index]);
+      //}
+
+      if (this.liObj[index]) {
+        this.cacheLi[this.liObj[index]].disabled = disabled;
       }
 
-      if (disabled) {
-        $lis.addClass('disabled').children('a').attr('href', '#').attr('tabindex', -1);
-      } else {
-        $lis.removeClass('disabled').children('a').removeAttr('href').attr('tabindex', 0);
-      }
+      //if (disabled) {
+      //  $lis.addClass('disabled').children('a').attr('href', '#').attr('tabindex', -1);
+      //} else {
+      //  $lis.removeClass('disabled').children('a').removeAttr('href').attr('tabindex', 0);
+      //}
     },
 
     isDisabled: function () {
@@ -1045,6 +1108,22 @@
       this.$element.attr('tabindex', -98);
     },
 
+    /**
+     * Scroll to item with index selectedIndex in clusterscroll.
+     *
+     * @param {Number} selectedIndex Selected index.
+     */
+    scrollToIndex: function(selectedIndex) {
+      var offset = this.$menuInner.find('li[data-original-index]').height() * selectedIndex;
+      offset = offset - this.$menuInner[0].offsetHeight / 2 + this.sizeInfo.liHeight / 2;
+      this.$menuInner[0].scrollTop = offset;
+      this.$menuInner.scroll();
+
+      setTimeout(function() {
+          this.$menuInner.find('li[data-original-index = ' + selectedIndex + ']').find('a').focus();
+      }.bind(this), 1);
+    },
+
     clickListener: function () {
       var that = this,
           $document = $(document);
@@ -1067,18 +1146,53 @@
       });
 
       this.$element.on('shown.bs.select', function () {
-        if (!that.options.liveSearch && !that.multiple) {
-          that.$menuInner.find('.selected a').focus();
-        } else if (!that.multiple) {
+        console.log(that.cacheLi.length);
+
+        if (that.clusterize) {
+          //that.clusterize.options.item_height = 30;
+          //that.clusterize.refresh();
+          //that.clusterize.update(that.cacheLi);
+          //that.clusterize.getRowsHeight(that.cacheLi);
+          that.clusterize.destroy(true);
+        }
+
+        that.clusterize = new Clusterize({
+          rows: that.cacheLi,
+          scrollElem: that.$clusterizeScroll.get(0),
+          contentElem: that.$clusterizeContent.get(0)
+        });
+
+
+
+
+
+        that.$clusterizeScroll.on('mousewheel', function(e, d) {
+          //height = toolbox.height(),
+          //  scrollHeight = toolbox.get(0).scrollHeight;
+          if((this.scrollTop === (this.scrollHeight - $(this).height()) && d < 0) || (this.scrollTop === 0 && d > 0)) {
+            e.preventDefault();
+          }
+        });
+
+        //if (!that.options.liveSearch && !that.multiple) {
+        //  //that.$menuInner.find('.selected a').focus();
+        //} else if (!that.multiple) {
           var selectedIndex = that.liObj[that.$element[0].selectedIndex];
 
           if (typeof selectedIndex !== 'number' || that.options.size === false) return;
 
+        that.scrollToIndex(selectedIndex);
+
+
           // scroll to selected option
-          var offset = that.$lis.eq(selectedIndex)[0].offsetTop - that.$menuInner[0].offsetTop;
-          offset = offset - that.$menuInner[0].offsetHeight/2 + that.sizeInfo.liHeight/2;
-          that.$menuInner[0].scrollTop = offset;
-        }
+          //var offset = that.$lis.eq(selectedIndex)[0].offsetTop - that.$menuInner[0].offsetTop;
+          //offset = offset - that.$menuInner[0].offsetHeight/2 + that.sizeInfo.liHeight/2;
+          //that.$menuInner[0].scrollTop = offset;
+        //}
+      });
+
+      this.$element.on('hide.bs.select', function() {
+        that.clusterize.destroy(true);
       });
 
       this.$menuInner.on('click', 'li a', function (e) {
@@ -1706,4 +1820,4 @@
       Plugin.call($selectpicker, $selectpicker.data());
     })
   });
-})(jQuery);
+})(jQuery, Clusterize);
