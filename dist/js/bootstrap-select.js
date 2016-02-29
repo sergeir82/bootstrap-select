@@ -26,12 +26,37 @@
 
   var ListItem = function(options) {
     this.options = options ||  {};
+    this.searchText = '';
+    this.normalizedText = '';
+
+    this.optgroup = this.options.optgroup && parseInt(this.options.optgroup, 10);
+
+    if (options.link) {
+      this.searchText = options.link.insertContent ?
+        options.link.text :
+        $('<div/>').html(options.link.text).text();
+
+      this.normalizedText = this.options.pluginOpt.liveSearchNormalize ? normalizeToBase(htmlEscape(this.searchText)) : '';
+      this.tokens = options.link.tokens;
+    }
+
   };
 
   ListItem.prototype.toString = function() {
     var options = this.options;
-    var content = options.link ?
-      this.generateA(options.link.text, options.link.classes, options.link.inline, options.link.tokens) : options.content;
+    var content;
+
+    if (options.link) {
+
+      // Prepend any icon and append any subtext to the main text.
+      var linkText = options.link.insertContent ?
+        options.link.text : options.link.icon + '<span class="text">' + options.link.text + options.link.subtext + '</span>';
+
+      content = this.generateA(linkText, options.link.classes, options.link.inline, options.link.tokens);
+    }
+    else {
+      content = options.content;
+    }
 
     var addClasses  = [options.classes];
 
@@ -615,14 +640,15 @@
         if ($this.hasClass('bs-title-option')) return;
 
         // Get the class and text for the option
-        var optionClass = this.className || '',
-            inline = this.style.cssText,
-            text = $this.data('content') ? $this.data('content') : $this.html(),
-            tokens = $this.data('tokens') ? $this.data('tokens') : null,
-            subtext = typeof $this.data('subtext') !== 'undefined' ? '<small class="text-muted">' + $this.data('subtext') + '</small>' : '',
-            icon = typeof $this.data('icon') !== 'undefined' ? '<span class="' + that.options.iconBase + ' ' + $this.data('icon') + '"></span> ' : '',
-            isOptgroup = this.parentNode.tagName === 'OPTGROUP',
-            isDisabled = this.disabled || (isOptgroup && this.parentNode.disabled);
+        var optionClass = this.className || '';
+        var inline = this.style.cssText;
+        var insertContent = !!$this.data('content') ;
+        var text = insertContent ? $this.data('content') : $this.html();
+        var tokens = $this.data('tokens') ? $this.data('tokens') : null;
+        var subtext = typeof $this.data('subtext') !== 'undefined' ? '<small class="text-muted">' + $this.data('subtext') + '</small>' : '';
+        var icon = typeof $this.data('icon') !== 'undefined' ? '<span class="' + that.options.iconBase + ' ' + $this.data('icon') + '"></span> ' : '';
+        var isOptgroup = this.parentNode.tagName === 'OPTGROUP';
+        var isDisabled = this.disabled || (isOptgroup && this.parentNode.disabled);
 
         if (icon !== '' && isDisabled) {
           icon = '<span>' + icon + '</span>';
@@ -631,11 +657,6 @@
         if (that.options.hideDisabled && isDisabled && !isOptgroup) {
           liIndex--;
           return;
-        }
-
-        if (!$this.data('content')) {
-          // Prepend any icon and append any subtext to the main text.
-          text = icon + '<span class="text">' + text + subtext + '</span>';
         }
 
         if (isOptgroup && $this.data('divider') !== true) {
@@ -665,7 +686,7 @@
           }
 
           _li.push(new ListItem({
-            link: { text: text, classes: 'opt ' + optionClass + optGroupClass, inline: inline, tokens: tokens },
+            link: { text: text, subtext: subtext, icon: icon, insertContent: insertContent, classes: 'opt ' + optionClass + optGroupClass, inline: inline, tokens: tokens },
             index: index,
             classes: '',
             optgroup: optID,
@@ -675,7 +696,7 @@
           _li.push(new ListItem({ content: '', index: index, classes: 'divider', pluginOpt: that.options }));
         } else if ($this.data('hidden') === true) {
           _li.push(new ListItem({
-            link: { text: text, classes: optionClass, inline: inline, tokens: tokens } ,
+            link: { text: text, subtext: subtext, icon: icon, insertContent: insertContent, classes: optionClass, inline: inline, tokens: tokens } ,
             index: index,
             classes: 'hidden is-hidden',
             pluginOpt: that.options
@@ -686,7 +707,19 @@
             _li.push(new ListItem({ content: '', index: null, classes: 'divider', optgroup:  optID + 'div', pluginOpt: that.options }));
           }
           _li.push(new ListItem({
-            link: { text: text, classes: optionClass, inline: inline, tokens: tokens }, index: index, pluginOpt: that.options }));
+            link: {
+              text: text,
+              subtext: subtext,
+              icon: icon,
+              insertContent: insertContent,
+              classes: optionClass,
+              inline: inline,
+              tokens: tokens
+            },
+            index: index,
+            optgroup: isOptgroup ? optID : null,
+            pluginOpt: that.options
+          }));
         }
 
         that.liObj[index] = liIndex;
@@ -1073,8 +1106,10 @@
       //  $lis = this.findLis().eq(this.liObj[index]);
       //}
 
-      if (this.liObj[index]) {
+      if (this.liObj[index] !== undefined) {
         this.cacheLi[this.liObj[index]].selected = selected;
+        //console.log(this.$menuInner.find('li[data-original-index = ' + index + ']'))
+        this.$menuInner.find('li[data-original-index = ' + index + ']').toggleClass('selected', selected);
       }
       //$lis.toggleClass('selected', selected);
     },
@@ -1143,8 +1178,10 @@
       this.$menuInner.scroll();
 
       setTimeout(function() {
-          this.$menuInner.find('li[data-original-index = ' + selectedIndex + ']').find('a').focus();
-      }.bind(this), 1);
+        if (selectedIndex !== undefined) {
+          this.$menuInner.find('li[data-original-index = ' + this.cacheLi[selectedIndex].options.index + ']').find('a').focus();
+        }
+      }.bind(this), 100);
     },
 
     clickListener: function () {
@@ -1169,8 +1206,6 @@
       });
 
       this.$element.on('shown.bs.select', function () {
-        console.log(that.cacheLi.length);
-
         if (that.clusterize) {
           //that.clusterize.options.item_height = 30;
           //that.clusterize.refresh();
@@ -1182,7 +1217,8 @@
         that.clusterize = new Clusterize({
           rows: that.cacheLi,
           scrollElem: that.$clusterizeScroll.get(0),
-          contentElem: that.$clusterizeContent.get(0)
+          contentElem: that.$clusterizeContent.get(0),
+          no_data_text: that.options.noneResultsText
         });
 
 
@@ -1396,57 +1432,131 @@
 
       this.$searchbox.on('input propertychange', function () {
         if (that.$searchbox.val()) {
-          var $searchBase = that.$lis.not('.is-hidden').removeClass('hidden').children('a');
-          if (that.options.liveSearchNormalize) {
-            $searchBase = $searchBase.not(':a' + that._searchStyle() + '("' + normalizeToBase(that.$searchbox.val()) + '")');
-          } else {
-            $searchBase = $searchBase.not(':' + that._searchStyle() + '("' + that.$searchbox.val() + '")');
+          //var $searchBase = that.$lis.not('.is-hidden').removeClass('hidden').children('a');
+          //if (that.options.liveSearchNormalize) {
+          //  $searchBase = $searchBase.not(':a' + that._searchStyle() + '("' + normalizeToBase(that.$searchbox.val()) + '")');
+          //} else {
+          //  $searchBase = $searchBase.not(':' + that._searchStyle() + '("' + that.$searchbox.val() + '")');
+          //}
+          //$searchBase.parent().addClass('hidden');
+          //
+          //that.$lis.filter('.dropdown-header').each(function () {
+          //  var $this = $(this),
+          //      optgroup = $this.data('optgroup');
+          //
+          //  if (that.$lis.filter('[data-optgroup=' + optgroup + ']').not($this).not('.hidden').length === 0) {
+          //    $this.addClass('hidden');
+          //    that.$lis.filter('[data-optgroup=' + optgroup + 'div]').addClass('hidden');
+          //  }
+          //});
+          //
+          //var $lisVisible = that.$lis.not('.hidden');
+          //
+          //// hide divider if first or last visible, or if followed by another divider
+          //$lisVisible.each(function (index) {
+          //  var $this = $(this);
+          //
+          //  if ($this.hasClass('divider') && (
+          //    $this.index() === $lisVisible.first().index() ||
+          //    $this.index() === $lisVisible.last().index() ||
+          //    $lisVisible.eq(index + 1).hasClass('divider'))) {
+          //    $this.addClass('hidden');
+          //  }
+          //});
+          //
+          //if (!that.$lis.not('.hidden, .no-results').length) {
+          //  if (!!$no_results.parent().length) {
+          //    $no_results.remove();
+          //  }
+          //  $no_results.html(that.options.noneResultsText.replace('{0}', '"' + htmlEscape(that.$searchbox.val()) + '"')).show();
+          //  that.$menuInner.append($no_results);
+          //} else if (!!$no_results.parent().length) {
+          //  $no_results.remove();
+          //}
+
+          var searchStr = that.$searchbox.val();
+
+          var reg = new RegExp(searchStr.replace(/[\-\[\]\/\{\}\(\)\*\+\?\.\\\^\$\|]/g, '\\$&'), 'i');
+
+          that.clusterize.options.no_data_text = that.options.noneResultsText.replace('{0}', '"' + htmlEscape(that.$searchbox.val()) + '"');
+
+          var search = function(item, text) {
+            var haystack;
+            text = text.toUpperCase();
+
+            if (that.options.liveSearchNormalize) {
+              if (that._searchStyle() == 'ibegins') {
+                haystack = (item.tokens || item.normalizedText || item.searchText).toUpperCase();
+                return haystack.startsWith(text);
+              }
+              else {
+                haystack = (item.tokens || item.normalizedText || item.searchText).toUpperCase();
+                return haystack.includes(text);
+              }
+            }
+            else {
+              if (that._searchStyle() == 'ibegins') {
+                haystack = (item.tokens || item.searchText).toUpperCase();
+                return haystack.startsWith(text);
+              }
+              else {
+                haystack = (item.tokens || item.searchText).toUpperCase();
+                return haystack.includes(text);
+              }
+            }
+          };
+
+          if (that.clusterize) {
+            var filtred = [];
+            var item;
+            var optgroup;
+            var stack = [];
+            var linkExist = false;
+
+            for (var i = 0; i < that.cacheLi.length; i++) {
+              item = that.cacheLi[i];
+
+              if (!item.options.link) {
+                if (item.optgroup != optgroup) {
+                  linkExist = false;
+                  optgroup = item.optgroup;
+                  stack = [item];
+                } else {
+                  if (linkExist) {
+                    filtred.push(item);
+                  }
+                  else {
+                    stack.push(item);
+                  }
+                }
+              }
+
+              if (search(item, searchStr)) {
+                if (item.optgroup == optgroup) {
+                  stack.forEach(function(item) {
+
+                    filtred.push(item);
+                  });
+                  stack = [];
+                  linkExist = true;
+                }
+
+                filtred.push(item)
+              }
+            }
           }
-          $searchBase.parent().addClass('hidden');
 
-          that.$lis.filter('.dropdown-header').each(function () {
-            var $this = $(this),
-                optgroup = $this.data('optgroup');
+          that.clusterize.update(filtred);
 
-            if (that.$lis.filter('[data-optgroup=' + optgroup + ']').not($this).not('.hidden').length === 0) {
-              $this.addClass('hidden');
-              that.$lis.filter('[data-optgroup=' + optgroup + 'div]').addClass('hidden');
-            }
-          });
-
-          var $lisVisible = that.$lis.not('.hidden');
-
-          // hide divider if first or last visible, or if followed by another divider
-          $lisVisible.each(function (index) {
-            var $this = $(this);
-
-            if ($this.hasClass('divider') && (
-              $this.index() === $lisVisible.first().index() ||
-              $this.index() === $lisVisible.last().index() ||
-              $lisVisible.eq(index + 1).hasClass('divider'))) {
-              $this.addClass('hidden');
-            }
-          });
-
-          if (!that.$lis.not('.hidden, .no-results').length) {
-            if (!!$no_results.parent().length) {
-              $no_results.remove();
-            }
-            $no_results.html(that.options.noneResultsText.replace('{0}', '"' + htmlEscape(that.$searchbox.val()) + '"')).show();
-            that.$menuInner.append($no_results);
-          } else if (!!$no_results.parent().length) {
-            $no_results.remove();
-          }
+          that.$menuInner.find('a:first').parent().addClass('active').focus();
+          $(this).focus();
         } else {
-          that.$lis.not('.is-hidden').removeClass('hidden');
-          if (!!$no_results.parent().length) {
-            $no_results.remove();
-          }
+          that.clusterize.update(that.cacheLi);
         }
 
-        that.$lis.filter('.active').removeClass('active');
-        if (that.$searchbox.val()) that.$lis.not('.hidden, .divider, .dropdown-header').eq(0).addClass('active').children('a').focus();
-        $(this).focus();
+        //that.$lis.filter('.active').removeClass('active');
+        //if (that.$searchbox.val()) that.$lis.not('.hidden, .divider, .dropdown-header').eq(0).addClass('active').children('a').focus();
+        //$(this).focus();
       });
     },
 
@@ -1512,7 +1622,7 @@
 
     keydown: function (e) {
       var $this = $(this),
-          $parent = $this.is('input') ? $this.parent().parent() : $this.parent(),
+          $parent = $this.closest('.bootstrap-select'),
           $items,
           that = $parent.data('this'),
           index,
@@ -1666,16 +1776,15 @@
           }
         }
 
-      } else if (!$this.is('input')) {
-        var keyIndex = [],
-            count,
-            prevKey;
+      } else if (!$this.is('input') && that.clusterize) {
+        var keyIndex = [];
+        var count;
+        var prevKey;
 
-        $items.each(function () {
-          if (!$(this).hasClass('disabled')) {
-            if ($.trim($(this).children('a').text().toLowerCase()).substring(0, 1) == keyCodeMap[e.keyCode]) {
-              keyIndex.push($(this).index());
-            }
+        $.each(that.cacheLi, function( i, item ) {
+          i < 20 && console.log(item.searchText, i)
+          if ($.trim(item.searchText).toLowerCase().substring(0, 1) == keyCodeMap[e.keyCode]) {
+            keyIndex.push(i);
           }
         });
 
@@ -1684,16 +1793,23 @@
         $(document).data('keycount', count);
 
         prevKey = $.trim($(':focus').text().toLowerCase()).substring(0, 1);
+        console.log('prevKey', prevKey);
 
         if (prevKey != keyCodeMap[e.keyCode]) {
           count = 1;
           $(document).data('keycount', count);
-        } else if (count >= keyIndex.length) {
+        }
+        else if (count >= keyIndex.length) {
           $(document).data('keycount', 0);
+
           if (count > keyIndex.length) count = 1;
         }
 
-        $items.eq(keyIndex[count - 1]).children('a').focus();
+        console.log(keyIndex);
+        var selectedIndex = keyIndex[count - 1];
+        console.log('selectedIndex:', selectedIndex)
+
+        that.scrollToIndex(selectedIndex);
       }
 
       // Select focused option if "Enter", "Spacebar" or "Tab" (when selectOnTab is true) are pressed inside the menu.
