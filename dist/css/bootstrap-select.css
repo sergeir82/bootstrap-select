@@ -51,6 +51,12 @@ select.selectpicker {
   outline: 5px auto -webkit-focus-ring-color !important;
   outline-offset: -2px;
 }
+.bootstrap-select .divider:first-child {
+  display: none;
+}
+.bootstrap-select .divider:last-child {
+  display: none;
+}
 .bootstrap-select.form-control {
   margin-bottom: 0;
   padding: 0;

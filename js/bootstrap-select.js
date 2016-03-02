@@ -16,7 +16,6 @@
       this.normalizedText = this.options.pluginOpt.liveSearchNormalize ? normalizeToBase(htmlEscape(this.searchText)) : '';
       this.tokens = options.link.tokens;
     }
-
   };
 
   ListItem.prototype.toString = function() {
@@ -37,32 +36,33 @@
 
     var addClasses  = [options.classes];
 
-    this.disabled && addClasses.push('disabled');
-    this.selected && addClasses.push('selected');
+    if (this.disabled) {
+      addClasses.push('disabled');
+    }
+
+    if (this.selected) {
+      addClasses.push('selected');
+    }
 
     return this.generateLI(content, options.index, addClasses.join(' '), options.optgroup);
   };
 
   ListItem.prototype.generateLI = function (content, index, classes, optgroup) {
     return '<li' +
-      ((typeof classes !== 'undefined' && '' !== classes) ? ' class="' + classes + '"' : '') +
-      ((typeof index !== 'undefined' && null !== index) ? ' data-original-index="' + index + '"' : '') +
-      ((typeof optgroup !== 'undefined' && null !== optgroup) ? 'data-optgroup="' + optgroup + '"' : '') +
+      (classes ? ' class="' + classes + '"' : '') +
+      (index || 0 === index ? ' data-original-index="' + index + '"' : '') +
+      (optgroup  || 0 === optgroup ? 'data-optgroup="' + optgroup + '"' : '') +
       '>' + content + '</li>';
   };
 
   ListItem.prototype.generateA = function (text, classes, inline, tokens) {
     return '<a tabindex="0"' +
-      (typeof classes !== 'undefined' ? ' class="' + classes + '"' : '') +
-      (typeof inline !== 'undefined' ? ' style="' + inline + '"' : '') +
-      (this.options.pluginOpt.liveSearchNormalize ? ' data-normalized-text="' + normalizeToBase(htmlEscape(text)) + '"' : '') +
-      (typeof tokens !== 'undefined' || tokens !== null ? ' data-tokens="' + tokens + '"' : '') +
+      (classes ? ' class="' + classes + '"' : '') +
+      (inline ? ' style="' + inline + '"' : '') +
       '>' + text +
       '<span class="' + this.options.pluginOpt.iconBase + ' ' + this.options.pluginOpt.tickIcon + ' check-mark"></span>' +
       '</a>';
   };
-
-
 
   //<editor-fold desc="Shims">
   if (!String.prototype.includes) {
@@ -218,34 +218,6 @@
   };
   //</editor-fold>
 
-  // Case insensitive contains search
-  $.expr[':'].icontains = function (obj, index, meta) {
-    var $obj = $(obj);
-    var haystack = ($obj.data('tokens') || $obj.text()).toUpperCase();
-    return haystack.includes(meta[3].toUpperCase());
-  };
-
-  // Case insensitive begins search
-  $.expr[':'].ibegins = function (obj, index, meta) {
-    var $obj = $(obj);
-    var haystack = ($obj.data('tokens') || $obj.text()).toUpperCase();
-    return haystack.startsWith(meta[3].toUpperCase());
-  };
-
-  // Case and accent insensitive contains search
-  $.expr[':'].aicontains = function (obj, index, meta) {
-    var $obj = $(obj);
-    var haystack = ($obj.data('tokens') || $obj.data('normalizedText') || $obj.text()).toUpperCase();
-    return haystack.includes(meta[3].toUpperCase());
-  };
-
-  // Case and accent insensitive begins search
-  $.expr[':'].aibegins = function (obj, index, meta) {
-    var $obj = $(obj);
-    var haystack = ($obj.data('tokens') || $obj.data('normalizedText') || $obj.text()).toUpperCase();
-    return haystack.startsWith(meta[3].toUpperCase());
-  };
-
   /**
    * Remove all diatrics from the given text.
    * @access private
@@ -303,7 +275,6 @@
     this.$newElement = null;
     this.$button = null;
     this.$menu = null;
-    this.$lis = null;
     this.options = options;
 
     // If we have no title yet, try to pull it from the html title attribute (jQuery doesnt' pick it up as it's not a
@@ -389,7 +360,6 @@
       this.$element.addClass('bs-select-hidden');
 
       // store originalIndex (key) and newIndex (value) in this.liObj for fast accessibility
-      // allows us to do this.$lis.eq(that.liObj[index]) instead of this.$lis.filter('[data-original-index="' + index + '"]')
       this.liObj = {};
       this.multiple = this.$element.prop('multiple');
       this.autofocus = this.$element.prop('autofocus');
@@ -420,11 +390,17 @@
 
       this.checkDisabled();
       this.clickListener();
-      if (this.options.liveSearch) this.liveSearchListener();
+
+      if (this.options.liveSearch) {
+        this.liveSearchListener();
+      }
       this.render();
       this.setStyle();
       this.setWidth();
-      if (this.options.container) this.selectPosition();
+
+      if (this.options.container) {
+        this.selectPosition();
+      }
       this.$menu.data('this', this);
       this.$newElement.data('this', this);
       if (this.options.mobile) this.mobile();
@@ -462,7 +438,9 @@
             },
             'rendered.bs.select': function () {
               // if select is no longer invalid, remove the bs-invalid class
-              if (this.validity.valid) that.$button.removeClass('bs-invalid');
+              if (this.validity.valid) {
+                that.$button.removeClass('bs-invalid');
+              }
               that.$element.off('rendered.bs.select');
             }
           });
@@ -533,22 +511,17 @@
 
     createView: function () {
       var $drop = this.createDropdown();
-      this.cacheLi = this.createLi();
-
-
+      this.reloadLi();
       return $drop;
     },
 
     reloadLi: function () {
-      ////Remove all children.
-      //this.destroyLi();
-      ////Re build
-      //var li = this.createLi();
-      //this.$menuInner[0].innerHTML = li;
+      this.cacheLi = this.createLi();
     },
 
     destroyLi: function () {
       this.$menu.find('li').remove();
+      delete this.cacheLi;
     },
 
     createLi: function () {
@@ -557,40 +530,6 @@
           optID = 0,
           titleOption = document.createElement('option'),
           liIndex = -1; // increment liIndex whenever a new <li> element is created to ensure liObj is correct
-
-      //// Helper functions
-      ///**
-      // * @param content
-      // * @param [index]
-      // * @param [classes]
-      // * @param [optgroup]
-      // * @returns {string}
-      // */
-      //var generateLI = function (content, index, classes, optgroup) {
-      //  return '<li' +
-      //      ((typeof classes !== 'undefined' & '' !== classes) ? ' class="' + classes + '"' : '') +
-      //      ((typeof index !== 'undefined' & null !== index) ? ' data-original-index="' + index + '"' : '') +
-      //      ((typeof optgroup !== 'undefined' & null !== optgroup) ? 'data-optgroup="' + optgroup + '"' : '') +
-      //      '>' + content + '</li>';
-      //};
-      //
-      ///**
-      // * @param text
-      // * @param [classes]
-      // * @param [inline]
-      // * @param [tokens]
-      // * @returns {string}
-      // */
-      //var generateA = function (text, classes, inline, tokens) {
-      //  return '<a tabindex="0"' +
-      //      (typeof classes !== 'undefined' ? ' class="' + classes + '"' : '') +
-      //      (typeof inline !== 'undefined' ? ' style="' + inline + '"' : '') +
-      //      (that.options.liveSearchNormalize ? ' data-normalized-text="' + normalizeToBase(htmlEscape(text)) + '"' : '') +
-      //      (typeof tokens !== 'undefined' || tokens !== null ? ' data-tokens="' + tokens + '"' : '') +
-      //      '>' + text +
-      //      '<span class="' + that.options.iconBase + ' ' + that.options.tickIcon + ' check-mark"></span>' +
-      //      '</a>';
-      //};
 
       if (this.options.title && !this.multiple) {
         // this option doesn't create a new <li> element, but does add a new option, so liIndex is decreased
@@ -710,11 +649,6 @@
       return _li;
     },
 
-    findLis: function () {
-      if (this.$lis == null) this.$lis = this.$menu.find('li');
-      return this.$lis;
-    },
-
     /**
      * @param [updateLi] defaults to true
      */
@@ -725,10 +659,8 @@
       //Update the LI to match the SELECT
       if (updateLi !== false) {
         this.$element.find('option').each(function (index) {
-          var $lis = that.findLis().eq(that.liObj[index]);
-
-          that.setDisabled(index, this.disabled || this.parentNode.tagName === 'OPTGROUP' && this.parentNode.disabled, $lis);
-          that.setSelected(index, this.selected, $lis);
+          that.setDisabled(index, this.disabled || this.parentNode.tagName === 'OPTGROUP' && this.parentNode.disabled);
+          that.setSelected(index, this.selected);
         });
       }
 
@@ -887,7 +819,8 @@
     },
 
     setSize: function () {
-      this.findLis();
+      var $lis = this.$menu.find('li');
+
       this.liHeight();
 
       if (this.options.header) this.$menu.css('padding-top', 0);
@@ -931,7 +864,7 @@
                 };
               },
               lis = that.$menuInner[0].getElementsByTagName('li'),
-              lisVisible = Array.prototype.filter ? Array.prototype.filter.call(lis, hasClass('hidden', false)) : that.$lis.not('.hidden'),
+              lisVisible = Array.prototype.filter ? Array.prototype.filter.call(lis, hasClass('hidden', false)) : $lis.not('.hidden'),
               optGroup = Array.prototype.filter ? Array.prototype.filter.call(lisVisible, hasClass('dropdown-header', true)) : lisVisible.filter('.dropdown-header');
 
           posVert();
@@ -971,9 +904,9 @@
         getSize();
         this.$searchbox.off('input.getSize propertychange.getSize').on('input.getSize propertychange.getSize', getSize);
         $window.off('resize.getSize scroll.getSize').on('resize.getSize scroll.getSize', getSize);
-      } else if (this.options.size && this.options.size != 'auto' && this.$lis.not(notDisabled).length > this.options.size) {
-        var optIndex = this.$lis.not('.divider').not(notDisabled).children().slice(0, this.options.size).last().parent().index(),
-            divLength = this.$lis.slice(0, optIndex + 1).filter('.divider').length;
+      } else if (this.options.size && this.options.size != 'auto' && $lis.not(notDisabled).length > this.options.size) {
+        var optIndex = $lis.not('.divider').not(notDisabled).children().slice(0, this.options.size).last().parent().index(),
+            divLength = $lis.slice(0, optIndex + 1).filter('.divider').length;
         menuHeight = liHeight * this.options.size + divLength * divHeight + menuPadding;
 
         if (that.options.container) {
@@ -1078,33 +1011,17 @@
       });
     },
 
-    setSelected: function (index, selected, $lis) {
-      //if (!$lis) {
-      //  $lis = this.findLis().eq(this.liObj[index]);
-      //}
-
+    setSelected: function (index, selected) {
       if (this.liObj[index] !== undefined) {
         this.cacheLi[this.liObj[index]].selected = selected;
-        //console.log(this.$menuInner.find('li[data-original-index = ' + index + ']'))
         this.$menuInner.find('li[data-original-index = ' + index + ']').toggleClass('selected', selected);
       }
-      //$lis.toggleClass('selected', selected);
     },
 
-    setDisabled: function (index, disabled, $lis) {
-      //if (!$lis) {
-      //  $lis = this.findLis().eq(this.liObj[index]);
-      //}
-
+    setDisabled: function (index, disabled) {
       if (this.liObj[index]) {
         this.cacheLi[this.liObj[index]].disabled = disabled;
       }
-
-      //if (disabled) {
-      //  $lis.addClass('disabled').children('a').attr('href', '#').attr('tabindex', -1);
-      //} else {
-      //  $lis.removeClass('disabled').children('a').removeAttr('href').attr('tabindex', 0);
-      //}
     },
 
     isDisabled: function () {
@@ -1156,7 +1073,9 @@
 
       setTimeout(function() {
         if (selectedIndex !== undefined) {
-          this.$menuInner.find('li[data-original-index = ' + this.cacheLi[selectedIndex].options.index + ']').find('a').focus();
+          var $li = this.$menuInner.find('li[data-original-index = ' + this.cacheLi[selectedIndex].options.index + ']');
+          $li.find('a').focus();
+          $li.toggleClass('active', true);
         }
       }.bind(this), 100);
     },
@@ -1184,10 +1103,6 @@
 
       this.$element.on('shown.bs.select', function () {
         if (that.clusterize) {
-          //that.clusterize.options.item_height = 30;
-          //that.clusterize.refresh();
-          //that.clusterize.update(that.cacheLi);
-          //that.clusterize.getRowsHeight(that.cacheLi);
           that.clusterize.destroy(true);
         }
 
@@ -1198,33 +1113,17 @@
           no_data_text: that.options.noneResultsText
         });
 
-
-
-
-
         that.$clusterizeScroll.on('mousewheel', function(e, d) {
-          //height = toolbox.height(),
-          //  scrollHeight = toolbox.get(0).scrollHeight;
           if((this.scrollTop === (this.scrollHeight - $(this).height()) && d < 0) || (this.scrollTop === 0 && d > 0)) {
             e.preventDefault();
           }
         });
 
-        //if (!that.options.liveSearch && !that.multiple) {
-        //  //that.$menuInner.find('.selected a').focus();
-        //} else if (!that.multiple) {
-          var selectedIndex = that.liObj[that.$element[0].selectedIndex];
+        var selectedIndex = that.liObj[that.$element[0].selectedIndex];
 
-          if (typeof selectedIndex !== 'number' || that.options.size === false) return;
+        if (typeof selectedIndex !== 'number' || that.options.size === false) return;
 
         that.scrollToIndex(selectedIndex);
-
-
-          // scroll to selected option
-          //var offset = that.$lis.eq(selectedIndex)[0].offsetTop - that.$menuInner[0].offsetTop;
-          //offset = offset - that.$menuInner[0].offsetHeight/2 + that.sizeInfo.liHeight/2;
-          //that.$menuInner[0].scrollTop = offset;
-        //}
       });
 
       this.$element.on('hide.bs.select', function() {
@@ -1394,7 +1293,6 @@
         that.$menuInner.find('.active').removeClass('active');
         if (!!that.$searchbox.val()) {
           that.$searchbox.val('');
-          that.$lis.not('.is-hidden').removeClass('hidden');
           if (!!$no_results.parent().length) $no_results.remove();
         }
         if (!that.multiple) that.$menuInner.find('.selected').addClass('active');
@@ -1409,48 +1307,6 @@
 
       this.$searchbox.on('input propertychange', function () {
         if (that.$searchbox.val()) {
-          //var $searchBase = that.$lis.not('.is-hidden').removeClass('hidden').children('a');
-          //if (that.options.liveSearchNormalize) {
-          //  $searchBase = $searchBase.not(':a' + that._searchStyle() + '("' + normalizeToBase(that.$searchbox.val()) + '")');
-          //} else {
-          //  $searchBase = $searchBase.not(':' + that._searchStyle() + '("' + that.$searchbox.val() + '")');
-          //}
-          //$searchBase.parent().addClass('hidden');
-          //
-          //that.$lis.filter('.dropdown-header').each(function () {
-          //  var $this = $(this),
-          //      optgroup = $this.data('optgroup');
-          //
-          //  if (that.$lis.filter('[data-optgroup=' + optgroup + ']').not($this).not('.hidden').length === 0) {
-          //    $this.addClass('hidden');
-          //    that.$lis.filter('[data-optgroup=' + optgroup + 'div]').addClass('hidden');
-          //  }
-          //});
-          //
-          //var $lisVisible = that.$lis.not('.hidden');
-          //
-          //// hide divider if first or last visible, or if followed by another divider
-          //$lisVisible.each(function (index) {
-          //  var $this = $(this);
-          //
-          //  if ($this.hasClass('divider') && (
-          //    $this.index() === $lisVisible.first().index() ||
-          //    $this.index() === $lisVisible.last().index() ||
-          //    $lisVisible.eq(index + 1).hasClass('divider'))) {
-          //    $this.addClass('hidden');
-          //  }
-          //});
-          //
-          //if (!that.$lis.not('.hidden, .no-results').length) {
-          //  if (!!$no_results.parent().length) {
-          //    $no_results.remove();
-          //  }
-          //  $no_results.html(that.options.noneResultsText.replace('{0}', '"' + htmlEscape(that.$searchbox.val()) + '"')).show();
-          //  that.$menuInner.append($no_results);
-          //} else if (!!$no_results.parent().length) {
-          //  $no_results.remove();
-          //}
-
           var searchStr = that.$searchbox.val();
 
           var reg = new RegExp(searchStr.replace(/[\-\[\]\/\{\}\(\)\*\+\?\.\\\^\$\|]/g, '\\$&'), 'i');
@@ -1530,10 +1386,6 @@
         } else {
           that.clusterize.update(that.cacheLi);
         }
-
-        //that.$lis.filter('.active').removeClass('active');
-        //if (that.$searchbox.val()) that.$lis.not('.hidden, .divider, .dropdown-header').eq(0).addClass('active').children('a').focus();
-        //$(this).focus();
       });
     },
 
@@ -1560,21 +1412,16 @@
     changeAll: function (status) {
       if (typeof status === 'undefined') status = true;
 
-      this.findLis();
-
-      var $options = this.$element.find('option'),
-          $lisVisible = this.$lis.not('.divider, .dropdown-header, .disabled, .hidden').toggleClass('selected', status),
-          lisVisLen = $lisVisible.length,
-          selectedOptions = [];
-
-      for (var i = 0; i < lisVisLen; i++) {
-        var origIndex = $lisVisible[i].getAttribute('data-original-index');
-        selectedOptions[selectedOptions.length] = $options.eq(origIndex)[0];
+      for (var i = 0; i < this.cacheLi.length; i++) {
+        if (this.cacheLi[i].options.link && !this.cacheLi[i].disabled) {
+          this.cacheLi[i].selected = status;
+        }
       }
 
-      $(selectedOptions).prop('selected', status);
+      this.$element.find('option').prop('selected', status);
 
-      this.render(false);
+      //console.log(this.$menuInner.find('li[data-original-index = ' + index + ']'))
+      this.$menuInner.find('li[data-original-index]').toggleClass('selected', status);
 
       this.$element
         .trigger('changed.bs.select')
@@ -1611,6 +1458,7 @@
           prevIndex,
           isActive,
           selector = ':not(.disabled, .hidden, .dropdown-header, .divider)',
+          clusterNum = that.clusterize.getClusterNum(),
           keyCodeMap = {
             32: ' ',
             48: '0',
@@ -1690,16 +1538,6 @@
         }
         // $items contains li elements when liveSearch is enabled
         $items = $('[role=menu] li' + selector, $parent);
-        if (!$this.val() && !/(38|40)/.test(e.keyCode.toString(10))) {
-          if ($items.filter('.active').length === 0) {
-            $items = that.$menuInner.find('li');
-            if (that.options.liveSearchNormalize) {
-              $items = $items.filter(':a' + that._searchStyle() + '(' + normalizeToBase(keyCodeMap[e.keyCode]) + ')');
-            } else {
-              $items = $items.filter(':' + that._searchStyle() + '(' + keyCodeMap[e.keyCode] + ')');
-            }
-          }
-        }
       }
 
       if (!$items.length) return;
@@ -1733,11 +1571,16 @@
           if (index != nextPrev && index > prev) index = prev;
           if (index < first) index = first;
           if (index == prevIndex) index = last;
+          console.log($items.eq(index));
         } else if (e.keyCode == 40) {
           if (that.options.liveSearch) index++;
           if (index == -1) index = 0;
           if (index != nextPrev && index < next) index = next;
-          if (index > last) index = last;
+          if (index > last) {
+            console.log($items.eq(index));
+            //this.scrollToIndex(index);
+            index = last;
+          }
           if (index == prevIndex) index = first;
         }
 
@@ -1748,18 +1591,36 @@
         } else {
           e.preventDefault();
           if (!$this.hasClass('dropdown-toggle')) {
-            $items.removeClass('active').eq(index).addClass('active').children('a').focus();
+            var originalIndex = $items.removeClass('active').eq(index).data('originalIndex');
+
+            $items.filter('li[data-original-index = "' + originalIndex + '"]').addClass('active').children('a').focus();
             $this.focus();
+
+
+            //$items.filter('li[data-original-index = "' + originalIndex + '"]').addClass('active')
+
+
+            if (clusterNum != that.clusterize.getClusterNum()) {
+              setTimeout(function() {
+                originalIndex;
+                $items = $('[role=menu] li[data-original-index]', this.$clusterizeContent);
+                $items.eq(0).addClass('active').children('a').focus();
+
+              }.bind(this) ,50);
+              //debugger;
+            }
+            clusterNum = that.clusterize.getClusterNum()
+
           }
         }
 
-      } else if (!$this.is('input') && that.clusterize) {
+      } else
+      if (!$this.is('input') && that.clusterize) {
         var keyIndex = [];
         var count;
         var prevKey;
 
         $.each(that.cacheLi, function( i, item ) {
-          i < 20 && console.log(item.searchText, i)
           if ($.trim(item.searchText).toLowerCase().substring(0, 1) == keyCodeMap[e.keyCode]) {
             keyIndex.push(i);
           }
@@ -1782,9 +1643,7 @@
           if (count > keyIndex.length) count = 1;
         }
 
-        console.log(keyIndex);
         var selectedIndex = keyIndex[count - 1];
-        console.log('selectedIndex:', selectedIndex)
 
         that.scrollToIndex(selectedIndex);
       }
@@ -1820,7 +1679,6 @@
     },
 
     refresh: function () {
-      this.$lis = null;
       this.liObj = {};
       this.reloadLi();
       this.render();
@@ -1828,7 +1686,7 @@
       this.liHeight(true);
       this.setStyle();
       this.setWidth();
-      if (this.$lis) this.$searchbox.trigger('propertychange');
+      if (this.cacheLi) this.$searchbox.trigger('propertychange');
 
       this.$element.trigger('refreshed.bs.select');
     },
