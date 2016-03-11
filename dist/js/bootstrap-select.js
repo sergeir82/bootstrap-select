@@ -1133,8 +1133,47 @@
           rows: that.cacheLi,
           scrollElem: that.$clusterizeScroll.get(0),
           contentElem: that.$clusterizeContent.get(0),
-          no_data_text: that.options.noneResultsText
+          no_data_text: that.options.noneResultsText,
+          callbacks: {
+            scrollingProgress: function() {
+              var self = that.clusterize;
+              var list = [];
+              var height = Array.prototype.reduce.call(self.content_elem.childNodes, function(prevHeight, listItem) {
+                var isExtra = $(listItem).hasClass('clusterize-extra-row');
+                isExtra || list.push(listItem);
+
+                return prevHeight + (isExtra ? 0 : $(listItem).outerHeight(true));
+              }, 0);
+
+              console.log(height, self.options.cluster_height )
+              console.log('rows_in_cluster', list.length , self.options.rows_in_cluster)
+
+              var clusterHeight = self.options.cluster_height / (self.options.rows_in_block * self.options.blocks_in_cluster);
+
+              var angle = (height / list.length - self.options.item_height ) / self.options.item_height;
+              var a = (height - self.options.cluster_height) / self.options.cluster_height;
+
+              console.log('angle: ', angle, a);
+
+              var top = - angle * (self.options.scroll_top - (self.options.cluster_height - self.options.block_height) * (self.getClusterNum()));
+
+              if (list.length < self.options.rows_in_cluster) {
+                top = 0;
+              }
+              list.forEach(function(listItem) {
+                listItem.style.transform = 'translateY(' + top + 'px)';
+              });
+            }
+          }
         });
+
+        that.clusterize.refreshOld = that.clusterize.refresh;
+
+
+        that.clusterize.refresh = function() {
+          that.clusterize.refreshOld();
+          that.clusterize.options.callbacks.scrollingProgress();
+        }
 
         that.$clusterizeScroll.on('mousewheel', function(e, d) {
           if((this.scrollTop === (this.scrollHeight - $(this).height()) && d < 0) || (this.scrollTop === 0 && d > 0)) {
@@ -1573,6 +1612,8 @@
         prev = $items.eq(index).prevAll(selector).eq(0).index();
         nextPrev = $items.eq(next).prevAll(selector).eq(0).index();
 
+        console.log(index, next, prev, nextPrev);
+
         if (that.options.liveSearch) {
           $items.each(function (i) {
             if (!$(this).hasClass('disabled')) {
@@ -1594,11 +1635,16 @@
           if (index != nextPrev && index > prev) index = prev;
           if (index < first) index = first;
           if (index == prevIndex) index = last;
+          console.log($items.eq(index));
         } else if (e.keyCode == 40) {
           if (that.options.liveSearch) index++;
           if (index == -1) index = 0;
           if (index != nextPrev && index < next) index = next;
-          if (index > last) index = last;
+          if (index > last) {
+            console.log($items.eq(index));
+            //this.scrollToIndex(index);
+            index = last;
+          }
           if (index == prevIndex) index = first;
         }
 
@@ -1609,12 +1655,31 @@
         } else {
           e.preventDefault();
           if (!$this.hasClass('dropdown-toggle')) {
-            $items.removeClass('active').eq(index).addClass('active').children('a').focus();
+            var originalIndex = $items.removeClass('active').eq(index).data('originalIndex');
+
+            $items.filter('li[data-original-index = "' + originalIndex + '"]').addClass('active').children('a').focus();
             $this.focus();
+
+
+            //$items.filter('li[data-original-index = "' + originalIndex + '"]').addClass('active')
+
+
+            if (clusterNum != that.clusterize.getClusterNum()) {
+              setTimeout(function() {
+                originalIndex;
+                $items = $('[role=menu] li[data-original-index]', this.$clusterizeContent);
+                $items.eq(0).addClass('active').children('a').focus();
+
+              }.bind(this) ,50);
+              //debugger;
+            }
+            clusterNum = that.clusterize.getClusterNum()
+
           }
         }
 
-      } else if (!$this.is('input') && that.clusterize) {
+      } else
+      if (!$this.is('input') && that.clusterize) {
         var keyIndex = [];
         var count;
         var prevKey;

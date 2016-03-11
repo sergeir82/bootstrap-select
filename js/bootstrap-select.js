@@ -1110,8 +1110,47 @@
           rows: that.cacheLi,
           scrollElem: that.$clusterizeScroll.get(0),
           contentElem: that.$clusterizeContent.get(0),
-          no_data_text: that.options.noneResultsText
+          no_data_text: that.options.noneResultsText,
+          callbacks: {
+            scrollingProgress: function() {
+              var self = that.clusterize;
+              var list = [];
+              var height = Array.prototype.reduce.call(self.content_elem.childNodes, function(prevHeight, listItem) {
+                var isExtra = $(listItem).hasClass('clusterize-extra-row');
+                isExtra || list.push(listItem);
+
+                return prevHeight + (isExtra ? 0 : $(listItem).outerHeight(true));
+              }, 0);
+
+              console.log(height, self.options.cluster_height )
+              console.log('rows_in_cluster', list.length , self.options.rows_in_cluster)
+
+              var clusterHeight = self.options.cluster_height / (self.options.rows_in_block * self.options.blocks_in_cluster);
+
+              var angle = (height / list.length - self.options.item_height ) / self.options.item_height;
+              var a = (height - self.options.cluster_height) / self.options.cluster_height;
+
+              console.log('angle: ', angle, a);
+
+              var top = - angle * (self.options.scroll_top - (self.options.cluster_height - self.options.block_height) * (self.getClusterNum()));
+
+              if (list.length < self.options.rows_in_cluster) {
+                top = 0;
+              }
+              list.forEach(function(listItem) {
+                listItem.style.transform = 'translateY(' + top + 'px)';
+              });
+            }
+          }
         });
+
+        that.clusterize.refreshOld = that.clusterize.refresh;
+
+
+        that.clusterize.refresh = function() {
+          that.clusterize.refreshOld();
+          that.clusterize.options.callbacks.scrollingProgress();
+        }
 
         that.$clusterizeScroll.on('mousewheel', function(e, d) {
           if((this.scrollTop === (this.scrollHeight - $(this).height()) && d < 0) || (this.scrollTop === 0 && d > 0)) {
@@ -1549,6 +1588,8 @@
         next = $items.eq(index).nextAll(selector).eq(0).index();
         prev = $items.eq(index).prevAll(selector).eq(0).index();
         nextPrev = $items.eq(next).prevAll(selector).eq(0).index();
+
+        console.log(index, next, prev, nextPrev);
 
         if (that.options.liveSearch) {
           $items.each(function (i) {
