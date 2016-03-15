@@ -12,6 +12,10 @@
     body {
       padding-top: 70px;
     }
+
+    *:focus {
+      outline: solid 3px red;
+    }
   </style>
 
   <script src="bower_components/jquery/dist/jquery.js"></script>
@@ -274,7 +278,7 @@
   </select>
 
   <hr>
-  Simple <select id="heavy" data-live-search="true"></select>
+  Simple <select id="heavy" ></select><!--data-live-search="true"-->
 
   <hr>
   With groups<select id="heavy-2"></select>
@@ -404,9 +408,9 @@
     for (i = 1; i < 5000; i++) {
       $heavy.append('<option value="' + i + '">' + toWords(i) + '</option>');
     }
-
-    $heavy.children('option').eq(200).prop('selected', true);
-    $heavy.children('option').eq(922).prop('disabled', true);
+//
+//    $heavy.children('option').eq(200).prop('selected', true);
+//    $heavy.children('option').eq(922).prop('disabled', true);
 
     $heavy.selectpicker();
 //
@@ -445,7 +449,7 @@
     var $heavy4 = $('#heavy-4');
 
     $optGr = undefined;
-    for (i = 1; i < 5000; i++) {
+    for (i = 1; i < 1000; i++) {
       if (i % 10) {
         $optGr && $optGr.append('<option value="' + i + '">' + i + ' ' + toWords(i) + '</option>');
 
