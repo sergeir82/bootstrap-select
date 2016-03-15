@@ -79,12 +79,12 @@
   };
 
   ListItem.prototype.generateA = function (text, classes, inline, tokens) {
-    return '<a tabindex="0"' +
+    return '<strong tabindex="-1"' +
       (classes ? ' class="' + classes + '"' : '') +
       (inline ? ' style="' + inline + '"' : '') +
       '>' + text +
       '<span class="' + this.options.pluginOpt.iconBase + ' ' + this.options.pluginOpt.tickIcon + ' check-mark"></span>' +
-      '</a>';
+      '</strong>';
   };
 
   //<editor-fold desc="Shims">
@@ -434,12 +434,15 @@
         },
         'hidden.bs.dropdown': function (e) {
           that.$element.trigger('hidden.bs.select', e);
+          console.log(this.$clusterizeScroll)
+          that.$clusterizeScroll .toggleClass('open', false);
         },
         'show.bs.dropdown': function (e) {
           that.$element.trigger('show.bs.select', e);
         },
         'shown.bs.dropdown': function (e) {
           that.$element.trigger('shown.bs.select', e);
+          that.$clusterizeScroll.toggleClass('open', true);
         }
       });
 
@@ -1094,13 +1097,19 @@
       this.$menuInner[0].scrollTop = offset;
       this.$menuInner.scroll();
 
-      setTimeout(function() {
+
+      //setTimeout(function() {
         if (selectedIndex !== undefined) {
           var $li = this.$menuInner.find('li[data-original-index = ' + this.cacheLi[selectedIndex].options.index + ']');
-          $li.find('a').focus();
+          $li.find('strong').focus();
+          this.$menuInner.find('.active').removeClass('active');
           $li.toggleClass('active', true);
+
+          if (this.options.liveSearch) {
+           // this.$searchbox.focus();
+          }
         }
-      }.bind(this), 100);
+      //}.bind(this), 1);
     },
 
     clickListener: function () {
@@ -1131,6 +1140,7 @@
 
         that.clusterize = new Clusterize({
           rows: that.cacheLi,
+          rows_in_block: 50,
           scrollElem: that.$clusterizeScroll.get(0),
           contentElem: that.$clusterizeContent.get(0),
           no_data_text: that.options.noneResultsText,
@@ -1154,6 +1164,7 @@
               var a = (height - self.options.cluster_height) / self.options.cluster_height;
 
               console.log('angle: ', angle, a);
+              that.angle = angle;
 
               var top = - angle * (self.options.scroll_top - (self.options.cluster_height - self.options.block_height) * (self.getClusterNum()));
 
@@ -1161,7 +1172,8 @@
                 top = 0;
               }
               list.forEach(function(listItem) {
-                listItem.style.transform = 'translateY(' + top + 'px)';
+                //listItem.style.transform = 'translateY(' + top + 'px)';
+                listItem.style.top = top + 'px';
               });
             }
           }
@@ -1174,6 +1186,15 @@
           that.clusterize.refreshOld();
           that.clusterize.options.callbacks.scrollingProgress();
         }
+
+        //that.clusterize.insertToDOMOld = that.clusterize.insertToDOM;
+        //
+        //that.clusterize.insertToDOM = function() {
+        //  var index = that.$clusterizeContent.find(':focus').parents('li').first().data('original-index');
+        //  this.insertToDOMOld.apply(this, arguments);
+        //  index && that.$clusterizeContent.find('li[data-original-index="' + index + '"] a').focus();
+        //  console.log(that.$clusterizeContent.find('li[data-original-index="' + index + '"] a'));
+        //}
 
         that.$clusterizeScroll.on('mousewheel', function(e, d) {
           if((this.scrollTop === (this.scrollHeight - $(this).height()) && d < 0) || (this.scrollTop === 0 && d > 0)) {
@@ -1605,78 +1626,169 @@
       if (!$items.length) return;
 
       if (/(38|40)/.test(e.keyCode.toString(10))) {
-        index = $items.index($items.find('a').filter(':focus').parent());
-        first = $items.filter(selector).first().index();
-        last = $items.filter(selector).last().index();
-        next = $items.eq(index).nextAll(selector).eq(0).index();
-        prev = $items.eq(index).prevAll(selector).eq(0).index();
-        nextPrev = $items.eq(next).prevAll(selector).eq(0).index();
+        e.preventDefault();
 
-        console.log(index, next, prev, nextPrev);
+        var focusItemIndex = -1;
+        var focusItem;
+        var i;
 
-        if (that.options.liveSearch) {
-          $items.each(function (i) {
-            if (!$(this).hasClass('disabled')) {
-              $(this).data('index', i);
+        if (typeof that.cacheLi.focusNum != 'number') {
+
+          focusItem = that.cacheLi.find(function(item, index) {
+            if (!item.disabled && item.options.link) {
+              focusItemIndex = index;
+              return true;
             }
           });
-          index = $items.index($items.filter('.active'));
-          first = $items.first().data('index');
-          last = $items.last().data('index');
-          next = $items.eq(index).nextAll().eq(0).data('index');
-          prev = $items.eq(index).prevAll().eq(0).data('index');
-          nextPrev = $items.eq(next).prevAll().eq(0).data('index');
-        }
 
-        prevIndex = $this.data('prevIndex');
-
-        if (e.keyCode == 38) {
-          if (that.options.liveSearch) index--;
-          if (index != nextPrev && index > prev) index = prev;
-          if (index < first) index = first;
-          if (index == prevIndex) index = last;
-          console.log($items.eq(index));
-        } else if (e.keyCode == 40) {
-          if (that.options.liveSearch) index++;
-          if (index == -1) index = 0;
-          if (index != nextPrev && index < next) index = next;
-          if (index > last) {
-            console.log($items.eq(index));
-            //this.scrollToIndex(index);
-            index = last;
+          if (focusItem) {
+            that.cacheLi.focusNum = focusItemIndex;
           }
-          if (index == prevIndex) index = first;
+
+        }
+        else {
+          var lastFocusNum = that.cacheLi.focusNum;
+
+          if (e.keyCode == 38) {
+            for (i = that.cacheLi.focusNum - 1; i > -1; i-- ) {
+              if (!that.cacheLi[i].disabled && that.cacheLi[i].options.link) {
+                focusItemIndex = i;
+                break;
+              }
+            }
+          }
+          else {
+            for (i = that.cacheLi.focusNum + 1; i < that.cacheLi.length; i++ ) {
+              if (!that.cacheLi[i].disabled && that.cacheLi[i].options.link) {
+                focusItemIndex = i;
+                break;
+              }
+            }
+          }
+
+          if (focusItemIndex > -1) {
+            that.cacheLi.focusNum = focusItemIndex;
+          }
+
+
         }
 
-        $this.data('prevIndex', index);
 
-        if (!that.options.liveSearch) {
-          $items.eq(index).children('a').focus();
-        } else {
-          e.preventDefault();
-          if (!$this.hasClass('dropdown-toggle')) {
-            var originalIndex = $items.removeClass('active').eq(index).data('originalIndex');
+        console.log(focusItemIndex)
+        if (focusItemIndex > -1) {
 
-            $items.filter('li[data-original-index = "' + originalIndex + '"]').addClass('active').children('a').focus();
+          //that.$clusterizeScroll.get(0).scrollTop -= (that.cacheLi.focusNum - focusItemIndex) * that.clusterize.options.item_height;
+          //that.$clusterizeScroll.scroll();
+
+          //var delta = that.$menuInner.find('li[data-original-index]').first().position().top
+          //  - (that.$menuInner.find('li[data-original-index = ' + that.cacheLi[focusItemIndex].options.index + ']').position().top ||  that.clusterize.options.item_height );
+          var clusterFocus = Math.ceil(focusItemIndex / that.clusterize.options.rows_in_cluster);
+
+
+          //that.$clusterizeScroll.get(0).scrollTop = clusterFocus * that.clusterize.options.cluster_height +
+          //((focusItemIndex - clusterFocus * that.clusterize.options.rows_in_cluster)*that.clusterize.options.item_height -
+          //that.$clusterizeScroll.height()/2)  * (1+ (that.angle || 0)) ;
+          that.$clusterizeScroll.get(0).scrollTop = focusItemIndex * that.clusterize.options.item_height - that.$menuInner[0].offsetHeight / 2 + that.sizeInfo.liHeight / 2;
+          that.clusterize.scrollEv();
+          $this.focus();
+
+          //that.scrollToIndex(focusItemIndex);
+          //setTimeout(function() {
+            var $li = that.$menuInner.find('li[data-original-index = ' + that.cacheLi[focusItemIndex].options.index + ']');
             $this.focus();
 
+            that.$menuInner.find('.active').removeClass('active');
+            console.log($li);
+            $li.toggleClass('active', true);
+            that.$clusterizeScroll.get(0).scrollTop += $li.offset().top - that.$clusterizeScroll.offset().top - that.$menuInner[0].offsetHeight / 2 + that.sizeInfo.liHeight / 2;
+            that.clusterize.scrollEv();
+            that.$menuInner.find('li[data-original-index = ' + that.cacheLi[focusItemIndex].options.index + ']').toggleClass('active', true);
+          //}, 1);
 
-            //$items.filter('li[data-original-index = "' + originalIndex + '"]').addClass('active')
-
-
-            if (clusterNum != that.clusterize.getClusterNum()) {
-              setTimeout(function() {
-                originalIndex;
-                $items = $('[role=menu] li[data-original-index]', this.$clusterizeContent);
-                $items.eq(0).addClass('active').children('a').focus();
-
-              }.bind(this) ,50);
-              //debugger;
-            }
-            clusterNum = that.clusterize.getClusterNum()
-
-          }
         }
+
+        return false;
+        //index = $items.index($items.find('a').filter(':focus').parent());
+        //first = $items.filter(selector).first().index();
+        //last = $items.filter(selector).last().index();
+        //next = $items.eq(index).nextAll(selector).eq(0).index();
+        //prev = $items.eq(index).prevAll(selector).eq(0).index();
+        //nextPrev = $items.eq(next).prevAll(selector).eq(0).index();
+        //
+        //console.log(index, next, prev, nextPrev);
+        //
+        //if (that.options.liveSearch) {
+        //  $items.each(function (i) {
+        //    if (!$(this).hasClass('disabled')) {
+        //      $(this).data('index', i);
+        //    }
+        //  });
+        //  index = $items.index($items.filter('.active'));
+        //  first = $items.first().data('index');
+        //  last = $items.last().data('index');
+        //  next = $items.eq(index).nextAll().eq(0).data('index');
+        //  prev = $items.eq(index).prevAll().eq(0).data('index');
+        //  nextPrev = $items.eq(next).prevAll().eq(0).data('index');
+        //}
+        //
+        //prevIndex = $this.data('prevIndex');
+        //
+        //if (e.keyCode == 38) {
+        //  if (that.options.liveSearch) index--;
+        //  if (index != nextPrev && index > prev) index = prev;
+        //  if (index < first) {
+        //    index = first;
+        //    that.$clusterizeScroll.get(0).scrollTop -= that.clusterize.getClusterNum() * that.clusterize.options.cluster_height ;
+        //  }
+        //  if (index == prevIndex) {
+        //
+        //  }
+        //  console.log($items.eq(index));
+        //} else if (e.keyCode == 40) {
+        //  if (that.options.liveSearch) index++;
+        //  if (index == -1) index = 0;
+        //  if (index != nextPrev && index < next) index = next;
+        //  if (index > last) {
+        //    console.log($items.eq(index));
+        //    //this.scrollToIndex(index);
+        //    index = last;
+        //  }
+        //
+        //}
+        //
+        //$this.data('prevIndex', index);
+        //
+        //if (!that.options.liveSearch) {
+        //  $items.eq(index).children('a').focus();
+        //} else {
+        //  e.preventDefault();
+        //
+        //}
+        //
+        //if (!$this.hasClass('dropdown-toggle')) {
+        //  var originalIndex = $items.removeClass('active').eq(index).data('originalIndex');
+        //
+        //  var $forFocus =$items.filter('li[data-original-index = "' + originalIndex + '"]').addClass('active').children('a');
+        //  $forFocus.length && $forFocus.focus();
+        //  //$this.focus();
+        //
+        //  setTimeout(function() {
+        //    if (clusterNum != that.clusterize.getClusterNum()) {
+        //
+        //      originalIndex;
+        //      $items = $('[role=menu] li[data-original-index]', this.$clusterizeContent);
+        //      //$items.eq(0).addClass('active').children('a').focus();
+        //      $items.filter('li[data-original-index = "' + originalIndex + '"], li[data-original-index = "' + (originalIndex + 1) + '"]').first().addClass('active').children('a').focus();
+        //      if (!$items.filter('li[data-original-index = "' + originalIndex + '"]').length) {
+        //        debugger;
+        //      }
+        //    }
+        //  }.bind(this) ,100);
+        //    //debugger;
+        //
+        //  clusterNum = that.clusterize.getClusterNum()
+        //
+        //}
 
       } else
       if (!$this.is('input') && that.clusterize) {
