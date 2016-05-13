@@ -1,4 +1,4 @@
-(function ($, Clusterize) {
+(function ($, LongList) {
   'use strict';
 
   var ListItem = function(options) {
@@ -938,8 +938,6 @@
           'min-height': ''
         });
       }
-
-      this.clusterize && this.clusterize.refresh();
     },
 
     setWidth: function () {
@@ -1115,61 +1113,68 @@
       });
 
       this.$element.on('shown.bs.select', function () {
-        if (that.clusterize) {
-          that.clusterize.destroy(true);
-        }
+        //if (that.clusterize) {
+        //  that.clusterize.destroy(true);
+        //}
 
-        that.clusterize = new Clusterize({
-          rows: that.cacheLi,
-          rows_in_block: 50,
-          scrollElem: that.$clusterizeScroll.get(0),
-          contentElem: that.$clusterizeContent.get(0),
-          no_data_text: that.options.noneResultsText,
-          callbacks: {
-            scrollingProgress: function() {
-              var self = that.clusterize;
-              var list = [];
-              var height = Array.prototype.reduce.call(self.content_elem.childNodes, function(prevHeight, listItem) {
-                var isExtra = $(listItem).hasClass('clusterize-extra-row');
-                isExtra || list.push(listItem);
-
-                return prevHeight + (isExtra ? 0 : $(listItem).outerHeight(true));
-              }, 0);
-
-              console.log(height, self.options.cluster_height )
-              console.log('rows_in_cluster', list.length , self.options.rows_in_cluster)
-
-              var clusterHeight = self.options.cluster_height / (self.options.rows_in_block * self.options.blocks_in_cluster);
-
-              var angle = (height / list.length - self.options.item_height ) / self.options.item_height;
-              var a = (height - self.options.cluster_height) / self.options.cluster_height;
-
-              console.log('angle: ', angle, a);
-              that.angle = angle;
-
-              var top = - angle * (self.options.scroll_top - (self.options.cluster_height - self.options.block_height) * (self.getClusterNum()));
-
-              if (self.getRowsAmount() < self.options.rows_in_cluster * (self.getClusterNum() + 1)) {
-              //if (list.length < self.options.rows_in_cluster) {
-                console.log('list.length', list.length, self.options.rows_in_cluster);
-                top = 0;
-              }
-              list.forEach(function(listItem) {
-                //listItem.style.transform = 'translateY(' + top + 'px)';
-                listItem.style.top = top + 'px';
-                //listItem.style.marginTop = top + 'px';
-              });
-            }
-          }
+        this.listItem = this.listItem || new LongList(that.$clusterizeScroll, {
+          generateItem: function(content) {
+            return String(content);
+          },
+          data: that.cacheLi
         });
 
-        that.clusterize.refreshOld = that.clusterize.refresh;
+        //that.clusterize = new Clusterize({
+        //  rows: that.cacheLi,
+        //  rows_in_block: 50,
+        //  scrollElem: that.$clusterizeScroll.get(0),
+        //  contentElem: that.$clusterizeContent.get(0),
+        //  no_data_text: that.options.noneResultsText,
+        //  callbacks: {
+        //    scrollingProgress: function() {
+        //      var self = that.clusterize;
+        //      var list = [];
+        //      var height = Array.prototype.reduce.call(self.content_elem.childNodes, function(prevHeight, listItem) {
+        //        var isExtra = $(listItem).hasClass('clusterize-extra-row');
+        //        isExtra || list.push(listItem);
+        //
+        //        return prevHeight + (isExtra ? 0 : $(listItem).outerHeight(true));
+        //      }, 0);
+        //
+        //      console.log(height, self.options.cluster_height )
+        //      console.log('rows_in_cluster', list.length , self.options.rows_in_cluster)
+        //
+        //      var clusterHeight = self.options.cluster_height / (self.options.rows_in_block * self.options.blocks_in_cluster);
+        //
+        //      var angle = (height / list.length - self.options.item_height ) / self.options.item_height;
+        //      var a = (height - self.options.cluster_height) / self.options.cluster_height;
+        //
+        //      console.log('angle: ', angle, a);
+        //      that.angle = angle;
+        //
+        //      var top = - angle * (self.options.scroll_top - (self.options.cluster_height - self.options.block_height) * (self.getClusterNum()));
+        //
+        //      if (self.getRowsAmount() < self.options.rows_in_cluster * (self.getClusterNum() + 1)) {
+        //      //if (list.length < self.options.rows_in_cluster) {
+        //        console.log('list.length', list.length, self.options.rows_in_cluster);
+        //        top = 0;
+        //      }
+        //      list.forEach(function(listItem) {
+        //        //listItem.style.transform = 'translateY(' + top + 'px)';
+        //        listItem.style.top = top + 'px';
+        //        //listItem.style.marginTop = top + 'px';
+        //      });
+        //    }
+        //  }
+        //});
 
-
-        that.clusterize.refresh = function() {
-          that.clusterize.refreshOld();
-          that.clusterize.options.callbacks.scrollingProgress();
-        }
+        //that.clusterize.refreshOld = that.clusterize.refresh;
+        //
+        //
+        //that.clusterize.refresh = function() {
+        //  that.clusterize.refreshOld();
+        //  that.clusterize.options.callbacks.scrollingProgress();
+        //}
 
         //that.clusterize.insertToDOMOld = that.clusterize.insertToDOM;
         //
@@ -1179,12 +1184,12 @@
         //  index && that.$clusterizeContent.find('li[data-original-index="' + index + '"] a').focus();
         //  console.log(that.$clusterizeContent.find('li[data-original-index="' + index + '"] a'));
         //}
-
-        that.$clusterizeScroll.on('mousewheel', function(e, d) {
-          if((this.scrollTop === (this.scrollHeight - $(this).height()) && d < 0) || (this.scrollTop === 0 && d > 0)) {
-            e.preventDefault();
-          }
-        });
+        //
+        //that.$clusterizeScroll.on('mousewheel', function(e, d) {
+        //  if((this.scrollTop === (this.scrollHeight - $(this).height()) && d < 0) || (this.scrollTop === 0 && d > 0)) {
+        //    e.preventDefault();
+        //  }
+        //});
 
         var selectedIndex = that.liObj[that.$element[0].selectedIndex];
 
@@ -1194,7 +1199,7 @@
       });
 
       this.$element.on('hide.bs.select', function() {
-        that.clusterize.destroy(true);
+        //that.clusterize.destroy(true);
       });
 
       this.$menuInner.on('click', 'li a', function (e) {
@@ -1378,7 +1383,7 @@
 
           var reg = new RegExp(searchStr.replace(/[\-\[\]\/\{\}\(\)\*\+\?\.\\\^\$\|]/g, '\\$&'), 'i');
 
-          that.clusterize.options.no_data_text = that.options.noneResultsText.replace('{0}', '"' + htmlEscape(that.$searchbox.val()) + '"');
+          //that.clusterize.options.no_data_text = that.options.noneResultsText.replace('{0}', '"' + htmlEscape(that.$searchbox.val()) + '"');
 
           var search = function(item, text) {
             var haystack;
@@ -1446,12 +1451,12 @@
             }
           }
 
-          that.clusterize.update(filtred);
+          //that.clusterize.update(filtred);
 
           that.$menuInner.find('a:first').parent().addClass('active').focus();
           $(this).focus();
         } else {
-          that.clusterize.update(that.cacheLi);
+          //that.clusterize.update(that.cacheLi);
         }
       });
     },
@@ -1525,7 +1530,7 @@
           prevIndex,
           isActive,
           selector = ':not(.disabled, .hidden, .dropdown-header, .divider)',
-          clusterNum = that.clusterize.getClusterNum(),
+          //clusterNum = that.clusterize.getClusterNum(),
           keyCodeMap = {
             32: ' ',
             48: '0',
@@ -1672,8 +1677,8 @@
           //that.$clusterizeScroll.get(0).scrollTop = clusterFocus * that.clusterize.options.cluster_height +
           //((focusItemIndex - clusterFocus * that.clusterize.options.rows_in_cluster)*that.clusterize.options.item_height -
           //that.$clusterizeScroll.height()/2)  * (1+ (that.angle || 0)) ;
-          that.$clusterizeScroll.get(0).scrollTop = focusItemIndex * that.clusterize.options.item_height - that.$menuInner[0].offsetHeight / 2 + that.sizeInfo.liHeight / 2;
-          that.clusterize.scrollEv();
+          //that.$clusterizeScroll.get(0).scrollTop = focusItemIndex * that.clusterize.options.item_height - that.$menuInner[0].offsetHeight / 2 + that.sizeInfo.liHeight / 2;
+          //that.clusterize.scrollEv();
 
           var $focus = $this;
 
@@ -1960,4 +1965,4 @@
       Plugin.call($selectpicker, $selectpicker.data());
     })
   });
-})(jQuery, Clusterize);
+})(jQuery, LongList);

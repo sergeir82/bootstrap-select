@@ -62,10 +62,10 @@ module.exports = function (grunt) {
       main: {
         options: {
           deps: {
-            'default': ['jQuery'],
-            amd: ['jquery'],
-            cjs: ['jquery'],
-            global: ['jQuery']
+            'default': ['jQuery', 'LongList'],
+            amd: ['jquery', 'LongList'],
+            cjs: ['jquery', 'LongList'],
+            global: ['jQuery', 'LongList']
           }
         },
         src: '<%= concat.main.dest %>'

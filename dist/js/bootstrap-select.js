@@ -8,20 +8,20 @@
 (function (root, factory) {
   if (typeof define === 'function' && define.amd) {
     // AMD. Register as an anonymous module unless amdModuleId is set
-    define(["jquery"], function (a0) {
-      return (factory(a0));
+    define(["jquery","LongList"], function (a0,b1) {
+      return (factory(a0,b1));
     });
   } else if (typeof exports === 'object') {
     // Node. Does not work with strict CommonJS, but
     // only CommonJS-like environments that support module.exports,
     // like Node.
-    module.exports = factory(require("jquery"));
+    module.exports = factory(require("jquery"),require("LongList"));
   } else {
-    factory(jQuery);
+    factory(jQuery,LongList);
   }
-}(this, function (jQuery) {
+}(this, function (jQuery, LongList) {
 
-(function ($, Clusterize) {
+(function ($, LongList) {
   'use strict';
 
   var ListItem = function(options) {
@@ -961,8 +961,6 @@
           'min-height': ''
         });
       }
-
-      this.clusterize && this.clusterize.refresh();
     },
 
     setWidth: function () {
@@ -1138,61 +1136,68 @@
       });
 
       this.$element.on('shown.bs.select', function () {
-        if (that.clusterize) {
-          that.clusterize.destroy(true);
-        }
+        //if (that.clusterize) {
+        //  that.clusterize.destroy(true);
+        //}
 
-        that.clusterize = new Clusterize({
-          rows: that.cacheLi,
-          rows_in_block: 50,
-          scrollElem: that.$clusterizeScroll.get(0),
-          contentElem: that.$clusterizeContent.get(0),
-          no_data_text: that.options.noneResultsText,
-          callbacks: {
-            scrollingProgress: function() {
-              var self = that.clusterize;
-              var list = [];
-              var height = Array.prototype.reduce.call(self.content_elem.childNodes, function(prevHeight, listItem) {
-                var isExtra = $(listItem).hasClass('clusterize-extra-row');
-                isExtra || list.push(listItem);
-
-                return prevHeight + (isExtra ? 0 : $(listItem).outerHeight(true));
-              }, 0);
-
-              console.log(height, self.options.cluster_height )
-              console.log('rows_in_cluster', list.length , self.options.rows_in_cluster)
-
-              var clusterHeight = self.options.cluster_height / (self.options.rows_in_block * self.options.blocks_in_cluster);
-
-              var angle = (height / list.length - self.options.item_height ) / self.options.item_height;
-              var a = (height - self.options.cluster_height) / self.options.cluster_height;
-
-              console.log('angle: ', angle, a);
-              that.angle = angle;
-
-              var top = - angle * (self.options.scroll_top - (self.options.cluster_height - self.options.block_height) * (self.getClusterNum()));
-
-              if (self.getRowsAmount() < self.options.rows_in_cluster * (self.getClusterNum() + 1)) {
-              //if (list.length < self.options.rows_in_cluster) {
-                console.log('list.length', list.length, self.options.rows_in_cluster);
-                top = 0;
-              }
-              list.forEach(function(listItem) {
-                //listItem.style.transform = 'translateY(' + top + 'px)';
-                listItem.style.top = top + 'px';
-                //listItem.style.marginTop = top + 'px';
-              });
-            }
-          }
+        this.listItem = this.listItem || new LongList(that.$clusterizeScroll, {
+          generateItem: function(content) {
+            return String(content);
+          },
+          data: that.cacheLi
         });
 
-        that.clusterize.refreshOld = that.clusterize.refresh;
+        //that.clusterize = new Clusterize({
+        //  rows: that.cacheLi,
+        //  rows_in_block: 50,
+        //  scrollElem: that.$clusterizeScroll.get(0),
+        //  contentElem: that.$clusterizeContent.get(0),
+        //  no_data_text: that.options.noneResultsText,
+        //  callbacks: {
+        //    scrollingProgress: function() {
+        //      var self = that.clusterize;
+        //      var list = [];
+        //      var height = Array.prototype.reduce.call(self.content_elem.childNodes, function(prevHeight, listItem) {
+        //        var isExtra = $(listItem).hasClass('clusterize-extra-row');
+        //        isExtra || list.push(listItem);
+        //
+        //        return prevHeight + (isExtra ? 0 : $(listItem).outerHeight(true));
+        //      }, 0);
+        //
+        //      console.log(height, self.options.cluster_height )
+        //      console.log('rows_in_cluster', list.length , self.options.rows_in_cluster)
+        //
+        //      var clusterHeight = self.options.cluster_height / (self.options.rows_in_block * self.options.blocks_in_cluster);
+        //
+        //      var angle = (height / list.length - self.options.item_height ) / self.options.item_height;
+        //      var a = (height - self.options.cluster_height) / self.options.cluster_height;
+        //
+        //      console.log('angle: ', angle, a);
+        //      that.angle = angle;
+        //
+        //      var top = - angle * (self.options.scroll_top - (self.options.cluster_height - self.options.block_height) * (self.getClusterNum()));
+        //
+        //      if (self.getRowsAmount() < self.options.rows_in_cluster * (self.getClusterNum() + 1)) {
+        //      //if (list.length < self.options.rows_in_cluster) {
+        //        console.log('list.length', list.length, self.options.rows_in_cluster);
+        //        top = 0;
+        //      }
+        //      list.forEach(function(listItem) {
+        //        //listItem.style.transform = 'translateY(' + top + 'px)';
+        //        listItem.style.top = top + 'px';
+        //        //listItem.style.marginTop = top + 'px';
+        //      });
+        //    }
+        //  }
+        //});
 
-
-        that.clusterize.refresh = function() {
-          that.clusterize.refreshOld();
-          that.clusterize.options.callbacks.scrollingProgress();
-        }
+        //that.clusterize.refreshOld = that.clusterize.refresh;
+        //
+        //
+        //that.clusterize.refresh = function() {
+        //  that.clusterize.refreshOld();
+        //  that.clusterize.options.callbacks.scrollingProgress();
+        //}
 
         //that.clusterize.insertToDOMOld = that.clusterize.insertToDOM;
         //
@@ -1202,12 +1207,12 @@
         //  index && that.$clusterizeContent.find('li[data-original-index="' + index + '"] a').focus();
         //  console.log(that.$clusterizeContent.find('li[data-original-index="' + index + '"] a'));
         //}
-
-        that.$clusterizeScroll.on('mousewheel', function(e, d) {
-          if((this.scrollTop === (this.scrollHeight - $(this).height()) && d < 0) || (this.scrollTop === 0 && d > 0)) {
-            e.preventDefault();
-          }
-        });
+        //
+        //that.$clusterizeScroll.on('mousewheel', function(e, d) {
+        //  if((this.scrollTop === (this.scrollHeight - $(this).height()) && d < 0) || (this.scrollTop === 0 && d > 0)) {
+        //    e.preventDefault();
+        //  }
+        //});
 
         var selectedIndex = that.liObj[that.$element[0].selectedIndex];
 
@@ -1217,7 +1222,7 @@
       });
 
       this.$element.on('hide.bs.select', function() {
-        that.clusterize.destroy(true);
+        //that.clusterize.destroy(true);
       });
 
       this.$menuInner.on('click', 'li a', function (e) {
@@ -1401,7 +1406,7 @@
 
           var reg = new RegExp(searchStr.replace(/[\-\[\]\/\{\}\(\)\*\+\?\.\\\^\$\|]/g, '\\$&'), 'i');
 
-          that.clusterize.options.no_data_text = that.options.noneResultsText.replace('{0}', '"' + htmlEscape(that.$searchbox.val()) + '"');
+          //that.clusterize.options.no_data_text = that.options.noneResultsText.replace('{0}', '"' + htmlEscape(that.$searchbox.val()) + '"');
 
           var search = function(item, text) {
             var haystack;
@@ -1469,12 +1474,12 @@
             }
           }
 
-          that.clusterize.update(filtred);
+          //that.clusterize.update(filtred);
 
           that.$menuInner.find('a:first').parent().addClass('active').focus();
           $(this).focus();
         } else {
-          that.clusterize.update(that.cacheLi);
+          //that.clusterize.update(that.cacheLi);
         }
       });
     },
@@ -1548,7 +1553,7 @@
           prevIndex,
           isActive,
           selector = ':not(.disabled, .hidden, .dropdown-header, .divider)',
-          clusterNum = that.clusterize.getClusterNum(),
+          //clusterNum = that.clusterize.getClusterNum(),
           keyCodeMap = {
             32: ' ',
             48: '0',
@@ -1695,8 +1700,8 @@
           //that.$clusterizeScroll.get(0).scrollTop = clusterFocus * that.clusterize.options.cluster_height +
           //((focusItemIndex - clusterFocus * that.clusterize.options.rows_in_cluster)*that.clusterize.options.item_height -
           //that.$clusterizeScroll.height()/2)  * (1+ (that.angle || 0)) ;
-          that.$clusterizeScroll.get(0).scrollTop = focusItemIndex * that.clusterize.options.item_height - that.$menuInner[0].offsetHeight / 2 + that.sizeInfo.liHeight / 2;
-          that.clusterize.scrollEv();
+          //that.$clusterizeScroll.get(0).scrollTop = focusItemIndex * that.clusterize.options.item_height - that.$menuInner[0].offsetHeight / 2 + that.sizeInfo.liHeight / 2;
+          //that.clusterize.scrollEv();
 
           var $focus = $this;
 
@@ -1983,7 +1988,166 @@
       Plugin.call($selectpicker, $selectpicker.data());
     })
   });
-})(jQuery, Clusterize);
+})(jQuery, LongList);
+
+(function (root, factory) {
+  if (typeof define === 'function' && define.amd) {
+    // AMD. Register as an anonymous module unless amdModuleId is set
+    define(["jquery"], function (a0) {
+      return (root['LongList'] = factory(a0));
+    });
+  } else if (typeof exports === 'object') {
+    // Node. Does not work with strict CommonJS, but
+    // only CommonJS-like environments that support module.exports,
+    // like Node.
+    module.exports = factory(require("jquery"));
+  } else {
+    root['LongList'] = factory(jQuery);
+  }
+}(this, function (jQuery) {
+
+var LongList = (function($) {
+  'use strict';
+
+  var Plugin = function(el, options) {
+    var defaultOptions = {
+      data: [],
+      idealRowHeight: 50,
+      rowsForShow: 50,
+      startShift: 5,
+      tpl: '<div class="scroll" tabindex="1">' +
+          '<div class="expander"></div>' +
+          '<div class="content-wrap">' +
+          '<div class="before"><ul></ul></div>' +
+          '<ul class="content"></ul>' +
+          '</div></div>'
+    };
+
+    this.options = $.extend({} , defaultOptions, options || {});
+
+    this.$scrollEl = $(this.options.tpl).appendTo($(el).eq(0));
+    this.$scrollEl.on('keydown', function(evt) {
+      evt.preventDefault();
+
+      if (evt.keyCode === 38 && this.focus >= 0) {
+        this.focus--;
+      }
+      else if (evt.keyCode === 40 && this.focus < this.options.data.length) {
+        this.focus++;
+      }
+
+      this.setFocus();
+    }.bind(this));
+
+    this.render();
+
+    this.$scrollEl.on('scroll', this.scroll.bind(this));
+    this.focus = 0;
+    this.$scrollEl.on('click', '.item', function(evt) {
+      this.focus = $(evt.currentTarget).data('item');
+      this.setFocus();
+    }.bind(this));
+
+    return this;
+  };
+
+  Plugin.prototype = {
+    scroll: function(evt) {
+      this.change({ top: $(evt.target).scrollTop() });
+    },
+
+    render: function(options) {
+      options = options || {};
+
+      var idealContentHeight = this.options.data.length * this.options.idealRowHeight;
+
+      var top = options.top || 0;
+
+      top = Math.floor(top / this.options.idealRowHeight) * this.options.idealRowHeight;
+
+      var start = options.start ? options.start : Math.floor(top / this.options.idealRowHeight);
+
+      this.start = start;
+
+      var rowsBefore = [];
+      var i;
+
+      for (i = start > this.options.startShift ? start - this.options.startShift : 0;
+           i < start && this.options.data[i];
+           i++) {
+        rowsBefore.push(this.generateItem(this.options.data[i], i));
+      }
+
+      var rows = [];
+
+      for (i = start; i < this.options.rowsForShow + start && this.options.data[i]; i++) {
+        rows.push(this.generateItem(this.options.data[i], i));
+      }
+
+      var isLast = !this.options.data[i];
+
+      this.$scrollEl.find('.expander').height(idealContentHeight);
+      this.$scrollEl.find('.before ul').html(rowsBefore);
+      this.$scrollEl.find('.content').html(rows);
+
+      if (isLast) {
+        this.$scrollEl.find('.expander').height(this.$scrollEl.find('.content').height() + top);
+      }
+
+      this.$scrollEl.find('.content-wrap').css({
+        top: start * this.options.idealRowHeight + 'px',
+        bottom: 'auto'
+      });
+
+      return this.$scrollEl;
+    },
+
+    change: function(options) {
+      this.render(options);
+    },
+
+    goToNumber: function(n) {
+      var top = n * this.options.idealRowHeight;
+      this.$scrollEl.scrollTop(top);
+    },
+
+    setFocus: function() {
+      this.$scrollEl.find('.item').removeClass('active');
+      var $focusEl = $(this.$scrollEl).find('.item-' + this.focus);
+
+      if (!$focusEl.length || !this.isScrolledIntoView($focusEl)) {
+        this.goToNumber(this.focus);
+        $(this.$scrollEl).find('.item-' + this.focus).addClass('active');
+      }
+      else {
+        $focusEl.addClass('active');
+      }
+    },
+
+    generateItem: function(content, i) {
+      var $li = this.options.generateItem ? $(this.options.generateItem(content)) : $('<li>').html(content);
+      return $li.addClass('item item-' + i + (this.focus === i ? ' active' : ''))
+        .data('item', i)
+    },
+
+    isScrolledIntoView: function(elem) {
+      var $elem = $(elem);
+      var docViewTop = this.$scrollEl.offset().top;
+      var docViewBottom = docViewTop + this.$scrollEl.height();
+
+      var elemTop = $elem.offset().top;
+      var elemBottom = elemTop + $elem.height();
+
+      return ((docViewTop < elemTop) && (docViewBottom > elemBottom));
+    }
+  };
+
+  return Plugin;
+})(jQuery);
+
+return LongList;
+
+}));
 
 
 }));
